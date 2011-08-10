@@ -75,12 +75,7 @@
 
 (defn- write-file
   [^Channel ch ^DefaultHttpResponse response ^File file keep-alive]
-  (let [raf (RandomAccessFile. file "r")
-        len (.length raf)
-        region (ChunkedFile. raf 0 len 8192)]
-    (.setHeader response "Content-Type"
-                (URLConnection/guessContentTypeFromName (.getName file)))
-    (HttpHeaders/setContentLength response len)
+  (let [region (ChunkedFile. file)]
     (.write ch response)                ;write initial line and header
     (let [write-future (.write ch region)]
       (if-not keep-alive
