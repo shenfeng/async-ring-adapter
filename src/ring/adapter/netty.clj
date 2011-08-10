@@ -11,13 +11,13 @@
            [org.jboss.netty.handler.codec.http HttpContentCompressor
             HttpRequestDecoder HttpResponseEncoder HttpChunkAggregator]))
 
-(defn- make-handler [handler zerocopy]
+(defn- make-handler [handler]
   (proxy [SimpleChannelUpstreamHandler] []
     (messageReceived [ctx evt]
       (let [request-map (build-request-map ctx (.getMessage evt))
             ring-response (handler request-map)]
         (when ring-response
-          (write-response ctx zerocopy
+          (write-response ctx
                           (request-map :keep-alive) ring-response))))
     (exceptionCaught [ctx evt]
       ;; (-> evt .getCause .printStackTrace)
@@ -31,7 +31,7 @@
                    (.addLast "aggregator" (HttpChunkAggregator. 65636))
                    (.addLast "encoder" (HttpResponseEncoder.))
                    (.addLast "chunkedWriter" (ChunkedWriteHandler.))
-                   (.addLast "handler" (make-handler handler zerocopy)))]
+                   (.addLast "handler" (make-handler handler)))]
     pipeline))
 
 (defn- pipeline-factory [options handler]

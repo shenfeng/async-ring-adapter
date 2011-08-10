@@ -83,23 +83,16 @@
 (defn- write-file [ch response file keep-alive zero-copy]
   (let [raf (RandomAccessFile. file "r")
         len (.length raf)
-        region (if zero-copy
-                 (DefaultFileRegion. (.getChannel raf) 0 len)
-                 (ChunkedFile. raf 0 len 8192))]
+        region (ChunkedFile. raf 0 len 8192)]
     (.setHeader response "Content-Type"
                 (URLConnection/guessContentTypeFromName (.getName file)))
     (set-content-length response len)
     (.write ch response)                ;write initial line and header
     (let [write-future (.write ch region)]
-      (if zero-copy
-        (.addListener write-future
-                      (reify ChannelFutureProgressListener
-                        (operationComplete [this fut]
-                          (.releaseExternalResources region)))))
-      (if not keep-alive
-          (.addListener write-future ChannelFutureListener/CLOSE)))))
+      (if-not keep-alive
+        (.addListener write-future ChannelFutureListener/CLOSE)))))
 
-(defn write-response [ctx zerocopy keep-alive {:keys [status headers body]}]
+(defn write-response [ctx keep-alive {:keys [status headers body]}]
   (let [ch (.getChannel ctx)
         netty-response (DefaultHttpResponse. HttpVersion/HTTP_1_1
                          (HttpResponseStatus/valueOf status))]
@@ -117,7 +110,7 @@
                                   (.close body)
                                   (-> fut .getChannel .close))))))
           (instance? File body)
-          (write-file ch netty-response body keep-alive zerocopy)
+          (write-file ch netty-response body keep-alive)
           (nil? body)
           nil
           :else
