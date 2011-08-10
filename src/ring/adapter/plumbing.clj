@@ -1,13 +1,12 @@
 (ns ring.adapter.plumbing
-  (:use [clojure.contrib.except :only (throwf)])
   (:import (java.io InputStream File RandomAccessFile FileInputStream)
            (java.net URLConnection)
 	   (org.jboss.netty.channel ChannelFutureListener DefaultFileRegion ChannelFutureProgressListener)
 	   (org.jboss.netty.buffer ChannelBufferInputStream ChannelBuffers)
 	   (org.jboss.netty.handler.stream ChunkedStream ChunkedFile)
-	   (org.jboss.netty.handler.codec.http HttpHeaders HttpVersion HttpMethod 
+	   (org.jboss.netty.handler.codec.http HttpHeaders HttpVersion HttpMethod
 					       HttpResponseStatus DefaultHttpResponse)))
-	   
+
 (defn- remote-address [ctx]
   (-> ctx .getChannel .getRemoteAddress .toString (.split ":")))
 
@@ -34,7 +33,7 @@
     (if (= idx -1)
       [uri nil]
       [(subs uri 0 idx) (subs uri (inc idx))])))
-    
+
 (defn- keep-alive? [headers msg]
   (let [version (.getProtocolVersion msg)
 	minor (.getMinorVersion version)
@@ -42,7 +41,7 @@
     (not (or (= (headers "connection") "close")
 	     (and (and (= major 1) (= minor 0))
 		  (= (headers "connection") "keep-alive"))))))
-  
+
 (defn build-request-map
   "Converts a netty request into a ring request map"
   [ctx netty-request]
@@ -69,7 +68,7 @@
       (.setHeader response key val-or-vals)
       (doseq [val val-or-vals]
 	(.addHeader response key val)))))
-		 
+
 (defn- set-content-length [msg length]
   (HttpHeaders/setContentLength msg length))
 
@@ -119,5 +118,5 @@
 	  (nil? body)
 	  nil
 	  :else
-	  (throwf "Unrecognized body: %s" body))))
+    (throw (Exception. (format "Unrecognized body: %s") body)))))
 
