@@ -56,32 +56,30 @@
      :body               (ChannelBufferInputStream. (.getContent req))
      :keep-alive         (HttpHeaders/isKeepAlive req)}))
 
-(defn- set-headers [^DefaultHttpResponse response headers]
+(defn- set-headers [^DefaultHttpResponse resp headers]
   (doseq [[^String key val-or-vals]  headers]
     (if (string? val-or-vals)
-      (.setHeader response key ^String val-or-vals)
+      (.setHeader resp key ^String val-or-vals)
       (doseq [val val-or-vals]
-        (.addHeader response key val)))))
+        (.addHeader resp key val)))))
 
 (defn- write-string
-  [^Channel ch ^DefaultHttpResponse response ^CharSequence content keep-alive]
-  (.setContent response (ChannelBuffers/copiedBuffer
-                         content CharsetUtil/UTF_8))
+  [^Channel ch ^DefaultHttpResponse resp ^CharSequence content keep-alive]
+  (.setContent resp (ChannelBuffers/copiedBuffer
+                     content CharsetUtil/UTF_8))
   (if keep-alive
-    (do (HttpHeaders/setContentLength ; only for a keep-alive connection.
-         response (-> response .getContent .readableBytes))
-        (HttpHeaders/setKeepAlive response true)
-        (print "keep alive" response)
-        (.write ch response))
-    (-> ch (.write response) (.addListener ChannelFutureListener/CLOSE))))
+    (do (HttpHeaders/setContentLength resp
+                                      (-> resp .getContent .readableBytes))
+        (.write ch resp))
+    (-> ch (.write resp) (.addListener ChannelFutureListener/CLOSE))))
 
 (defn- write-file
-  [^Channel ch ^DefaultHttpResponse response ^File file keep-alive]
+  [^Channel ch ^DefaultHttpResponse resp ^File file keep-alive]
   (let [region (ChunkedFile. file)]
-    (.write ch response)                ;write initial line and header
-    (let [write-future (.write ch region)]
-      (if-not keep-alive
-        (.addListener write-future ChannelFutureListener/CLOSE)))))
+    (.write ch resp)     ; write initial line and headers(length, ect)
+    (if keep-alive
+      (.write ch region)
+      (-> ch (.write region) (.addListener ChannelFutureListener/CLOSE)))))
 
 (defn write-response
   [^ChannelHandlerContext ctx keep-alive {:keys [status headers body]}]
