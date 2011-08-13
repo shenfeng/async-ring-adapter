@@ -5,6 +5,8 @@
                  [org.jboss.netty/netty "3.2.5.Final"]]
   :dev-dependencies [[swank-clojure "1.4.0-SNAPSHOT"]
                      [clj-http "0.1.3"]
+                     [org.clojure/tools.cli "0.1.0"]
+                     [ring/ring-jetty-adapter "0.3.11"]
                      [ring/ring-core "0.3.11"]]
   :warn-on-reflection true
   :repositories {"JBoss"

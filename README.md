@@ -56,6 +56,16 @@ see
 * Serving file is not optimized due to it's better be done by Nginx,
   so as compression.
 
+## Benchmark
+
+There is a script `./scripts/start_server` will start netty at port
+3333, jetty at port 4444, here is a result on my machine
+
+```sh
+  ab -n 300000 -c 50 http://localhost:4444/  #11264.90 [#/sec] (mean)
+  ab -n 300000 -c 50 http://localhost:3333/  #12638.37 [#/sec] (mean)
+```
+
 ## Contributors
 
 This repo was fork from [datskos](https://github.com/datskos/ring-netty-adapter)
@@ -63,4 +73,3 @@ This repo was fork from [datskos](https://github.com/datskos/ring-netty-adapter)
 ## Next steps:
 
 * Find a way to do things asynchronously.
-*
