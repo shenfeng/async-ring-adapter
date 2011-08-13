@@ -1,9 +1,7 @@
 (ns ring.adapter.netty
   (:use ring.adapter.plumbing)
-  (:require clojure.pprint)
   (:import [java.net InetSocketAddress]
            [java.util.concurrent Executors]
-           [java.io ByteArrayInputStream]
            org.jboss.netty.channel.group.DefaultChannelGroup
            org.jboss.netty.bootstrap.ServerBootstrap
            org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory
@@ -44,12 +42,11 @@
     (getPipeline [this]
       (doto (Channels/pipeline)
         (.addLast "decoder" (HttpRequestDecoder.))
-        (.addLast "aggregator" (HttpChunkAggregator. 65636))
         (.addLast "encoder" (HttpResponseEncoder.))
         (.addLast "chunkedWriter" (ChunkedWriteHandler.))
         (.addLast "handler" (make-handler channel-group handler))))))
 
-(defn- create-server [options handler]
+(defn run-netty [handler options]
   (let [server (ServerBootstrap. (NioServerSocketChannelFactory.
                                   (Executors/newCachedThreadPool)
                                   (Executors/newCachedThreadPool)))
@@ -63,10 +60,3 @@
     (fn []
       (-> channel-group .close .awaitUninterruptibly)
       (.releaseExternalResources server))))
-
-(defn run-netty [handler options]
-  (let [server (create-server options handler)]
-    (println "Running server on port:" (:port options))
-    server))
-
-

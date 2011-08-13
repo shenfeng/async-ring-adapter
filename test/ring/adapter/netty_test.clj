@@ -1,11 +1,12 @@
 (ns ring.adapter.netty-test
   (:use clojure.test
+        clojure.pprint
         ring.middleware.file-info
         ring.adapter.netty)
   (:require [clj-http.client :as http])
   (:import [java.io File FileOutputStream FileInputStream]))
 
-(defn gen-tempfile
+(defn ^File gen-tempfile
   "generate a tempfile, the file will be deleted before jvm shutdown"
   ([size extension]
      (let [tmp (doto
@@ -13,21 +14,38 @@
                  (.deleteOnExit))]
        (with-open [w (FileOutputStream. tmp)]
          (doseq [i (range size)]
-           (.write w (rem i 255))))
+           (.write w ^Integer (rem i 255))))
        tmp)))
 
-(deftest netty-body-string
+(deftest test-netty-ring-spec
+  (let [server (run-netty (fn [req]
+                            (is (= 4347 (:server-port req)))
+                            (is (= "localhost" (:server-name req)))
+                            (is (= "127.0.0.1" (:remote-addr req)))
+                            (is (= "/uri" (:uri req)))
+                            (is (= "a=b" (:query-string req)))
+                            (is (= :http (:scheme req)))
+                            (is (= :get (:request-method  req)))
+                            (is (= nil (:content-type req)))
+                            {:status  200
+                             :headers {"Content-Type" "text/plain"}
+                             :body    "Hello World"})
+                          {:port 4347})]
+    (try
+      (let [resp (http/get "http://localhost:4347/uri"
+                           {:query-params {"a" "b"}})])
+      (server))))
+
+(deftest test-body-string
   (let [server (run-netty (fn [req]
                             {:status  200
                              :headers {"Content-Type" "text/plain"}
                              :body    "Hello World"})
                           {:port 4347})]
     (try
-      (Thread/sleep 300)
       (let [resp (http/get "http://localhost:4347")]
         (is (= (:status resp) 200))
-        (is (.startsWith (get-in resp [:headers "content-type"])
-                         "text/plain"))
+        (is (= (get-in resp [:headers "content-type"]) "text/plain"))
         (is (= (:body resp) "Hello World")))
       (server))))
 
@@ -39,11 +57,9 @@
                                    :body (gen-tempfile 67 ".txt")}))
                 {:port 4347})]
     (try
-      (Thread/sleep 300)
       (let [resp (http/get "http://localhost:4347")]
         (is (= (:status resp) 200))
-        (is (.startsWith (get-in resp [:headers "content-type"])
-                         "text/plain"))
+        (is (= (get-in resp [:headers "content-type"]) "text/plain"))
         (is (:body resp)))
       (server))))
 
@@ -58,4 +74,17 @@
       (let [resp (http/get "http://localhost:4347")]
         (is (= (:status resp) 200))
         (is (:body resp)))
+      (server))))
+
+(deftest test-body-iseq
+  (let [server (run-netty (fn [req]
+                            {:status  200
+                             :headers {"Content-Type" "text/plain"}
+                             :body    (list "Hello " "World")})
+                          {:port 4347})]
+    (try
+      (let [resp (http/get "http://localhost:4347")]
+        (is (= (:status resp) 200))
+        (is (= (get-in resp [:headers "content-type"]) "text/plain"))
+        (is (= (:body resp) "Hello World")))
       (server))))

@@ -1,7 +1,6 @@
 (ns ring.adapter.plumbing
   (:require [clojure.string :as str])
   (:import [java.io InputStream File RandomAccessFile FileInputStream]
-           java.net.URLConnection
            [org.jboss.netty.channel Channel ChannelFutureListener
             ChannelHandlerContext]
            org.jboss.netty.handler.codec.http.HttpRequest
@@ -17,17 +16,11 @@
   (let [^InetSocketAddress a (-> ctx .getChannel .getRemoteAddress)]
     (-> a .getAddress .getHostAddress)))
 
-(defn- get-headers
-  [^HttpRequest req]
+(defn- get-headers  [^HttpRequest req]
   (reduce (fn [headers ^String name]
             (assoc headers (.toLowerCase name) (.getHeader req name)))
           {}
           (.getHeaderNames req)))
-
-(defn- content-type [headers]
-  (if-let [ct ^String (headers "content-type")]
-    (-> ct (.split ";") first str/trim str/lower-case)
-    "text/html"))
 
 (defn- uri-query [^HttpRequest req]
   (let [uri ^String (.getUri req)
@@ -35,12 +28,19 @@
     (if (= idx -1) [uri nil]
         [(subs uri 0 idx) (subs uri (inc idx))])))
 
+(defn- domain-port [^HttpRequest req]
+  (let [host (HttpHeaders/getHost req)
+        idx (.indexOf host ":")]
+    (if (= idx -1) (list host 80)
+        (list (subs host 0 idx) (Integer/parseInt
+                                 (subs host (inc idx)))))))
+
 (defn build-request-map
   "Converts a netty request into a ring request map, TODO http/1.0 use
    keep-alive too"
   [^ChannelHandlerContext ctx ^HttpRequest req]
   (let [headers (get-headers req)
-        [domain port] (.split ^String (headers "host") ":")
+        [domain port] (domain-port req)
         [uri query-string] (uri-query req)]
     {:server-port        port
      :server-name        domain
@@ -50,11 +50,11 @@
      :scheme             (keyword (headers "x-scheme" "http"))
      :request-method     (-> req .getMethod .getName .toLowerCase keyword)
      :headers            headers
-     :content-type       (content-type headers)
-     :content-length     (headers "content-length")
+     :content-type       (headers "content-type")
+     :content-length     (HttpHeaders/getContentLength req)
      :character-encoding (headers "content-encoding")
      :body               (ChannelBufferInputStream. (.getContent req))
-     :keep-alive         (= (headers "connection") "keep-alive")}))
+     :keep-alive         (HttpHeaders/isKeepAlive req)}))
 
 (defn- set-headers [^DefaultHttpResponse response headers]
   (doseq [[^String key val-or-vals]  headers]
@@ -63,13 +63,15 @@
       (doseq [val val-or-vals]
         (.addHeader response key val)))))
 
-(defn- write-content
+(defn- write-string
   [^Channel ch ^DefaultHttpResponse response ^CharSequence content keep-alive]
   (.setContent response (ChannelBuffers/copiedBuffer
                          content CharsetUtil/UTF_8))
   (if keep-alive
     (do (HttpHeaders/setContentLength ; only for a keep-alive connection.
          response (-> response .getContent .readableBytes))
+        (HttpHeaders/setKeepAlive response true)
+        (print "keep alive" response)
         (.write ch response))
     (-> ch (.write response) (.addListener ChannelFutureListener/CLOSE))))
 
@@ -87,8 +89,8 @@
         resp (DefaultHttpResponse. HttpVersion/HTTP_1_1
                (HttpResponseStatus/valueOf status))]
     (set-headers resp headers)
-    (cond (string? body) (write-content ch resp body keep-alive)
-          (seq? body) (write-content ch resp (apply str body) keep-alive)
+    (cond (string? body) (write-string ch resp body keep-alive)
+          (seq? body) (write-string ch resp (apply str body) keep-alive)
           (instance? InputStream body)
           (do
             (.write ch resp)
