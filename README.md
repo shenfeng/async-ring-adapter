@@ -5,7 +5,7 @@ for used with [Ring](https://github.com/mmcgrana/ring)
 
 ## Quick Start
 
-  `[org.clojars.shenfeng/ring-netty-adapter "0.0.1-SNAPSHOT"]`
+  `[me.shenfeng/ring-netty-adapter "0.0.1-SNAPSHOT"]`
 
 ```clj
 (use 'ring.adapter.netty)

@@ -1,4 +1,4 @@
-(defproject org.clojars.shenfeng/ring-netty-adapter
+(defproject me.shenfeng/ring-netty-adapter
   "0.0.1-SNAPSHOT"
   :description "Ring Netty adapter"
   :dependencies [[clojure "1.2.1"]
