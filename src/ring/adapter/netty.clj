@@ -18,7 +18,6 @@
    "child.keepAlive" true,
    "child.connectTimeoutMillis" 100,
    "tcpNoDelay" true,
-   "readWriteFair" true,
    "child.tcpNoDelay" true})
 
 (defn- make-handler
