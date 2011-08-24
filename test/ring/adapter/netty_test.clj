@@ -34,7 +34,8 @@
     (try
       (let [resp (http/get "http://localhost:4347/uri"
                            {:query-params {"a" "b"}})])
-      (server))))
+      (finally (server)))))
+
 
 (deftest test-body-string
   (let [server (run-netty (fn [req]
@@ -47,7 +48,7 @@
         (is (= (:status resp) 200))
         (is (= (get-in resp [:headers "content-type"]) "text/plain"))
         (is (= (:body resp) "Hello World")))
-      (server))))
+      (finally (server)))))
 
 
 (deftest test-body-file
@@ -61,20 +62,20 @@
         (is (= (:status resp) 200))
         (is (= (get-in resp [:headers "content-type"]) "text/plain"))
         (is (:body resp)))
-      (server))))
+      (finally (server)))))
 
 (deftest test-body-inputstream
   (let [server (run-netty
                 (fn [req]
                   {:status 200
-                   :body (FileInputStream. (gen-tempfile 67 ".txt"))})
+                   :body (FileInputStream. (gen-tempfile 67000 ".txt"))})
                 {:port 4347})]
     (try
       (Thread/sleep 300)
       (let [resp (http/get "http://localhost:4347")]
         (is (= (:status resp) 200))
         (is (:body resp)))
-      (server))))
+      (finally (server)))))
 
 (deftest test-body-iseq
   (let [server (run-netty (fn [req]
@@ -87,4 +88,15 @@
         (is (= (:status resp) 200))
         (is (= (get-in resp [:headers "content-type"]) "text/plain"))
         (is (= (:body resp) "Hello World")))
-      (server))))
+      (finally (server)))))
+
+(deftest test-body-null
+  (let [server (run-netty (fn [req]
+                            {:status  204
+                             :headers {"Content-Type" "text/plain"}})
+                          {:port 4347})]
+    (try
+      (let [resp (http/get "http://localhost:4347")]
+        (is (= (:status resp) 204))
+        (is (= (get-in resp [:headers "content-type"]) "text/plain")))
+      (finally (server)))))

@@ -60,6 +60,8 @@ see
 
 There is a script `./scripts/start_server` will start netty at port
 3333, jetty at port 4444, here is a result on my machine
+#### how to run
+* lein deps && lein javac && ./scripts/start_server
 
 ```sh
   ab -n 300000 -c 50 http://localhost:4444/  #11264.90 [#/sec] (mean)

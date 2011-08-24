@@ -1,16 +1,11 @@
 (ns ring.adapter.plumbing
-  (:require [clojure.string :as str])
-  (:import [java.io InputStream File RandomAccessFile FileInputStream]
-           [org.jboss.netty.channel Channel ChannelFutureListener
-            ChannelHandlerContext]
+  (:import [org.jboss.netty.channel ChannelHandlerContext]
+           ring.adapter.netty.Util
            org.jboss.netty.handler.codec.http.HttpRequest
-           org.jboss.netty.util.CharsetUtil
-           org.jboss.netty.channel.ChannelFuture
            java.net.InetSocketAddress
-           [org.jboss.netty.buffer ChannelBufferInputStream ChannelBuffers]
-           [org.jboss.netty.handler.stream ChunkedStream ChunkedFile]
+           [org.jboss.netty.buffer ChannelBufferInputStream]
            [org.jboss.netty.handler.codec.http HttpHeaders HttpVersion
-            HttpMethod HttpResponseStatus DefaultHttpResponse]))
+            HttpResponseStatus DefaultHttpResponse]))
 
 (defn- remote-address [^ChannelHandlerContext ctx]
   (let [^InetSocketAddress a (-> ctx .getChannel .getRemoteAddress)]
@@ -63,41 +58,10 @@
       (doseq [val val-or-vals]
         (.addHeader resp key val)))))
 
-(defn- write-string
-  [^Channel ch ^DefaultHttpResponse resp ^CharSequence content keep-alive]
-  (.setContent resp (ChannelBuffers/copiedBuffer
-                     content CharsetUtil/UTF_8))
-  (if keep-alive
-    (do (HttpHeaders/setContentLength resp
-                                      (-> resp .getContent .readableBytes))
-        (.write ch resp))
-    (-> ch (.write resp) (.addListener ChannelFutureListener/CLOSE))))
-
-(defn- write-file
-  [^Channel ch ^DefaultHttpResponse resp ^File file keep-alive]
-  (let [region (ChunkedFile. file)]
-    (.write ch resp)     ; write initial line and headers(length, ect)
-    (if keep-alive
-      (.write ch region)
-      (-> ch (.write region) (.addListener ChannelFutureListener/CLOSE)))))
-
 (defn write-response
   [^ChannelHandlerContext ctx keep-alive {:keys [status headers body]}]
-  (let [ch (.getChannel ctx)
-        resp (DefaultHttpResponse. HttpVersion/HTTP_1_1
+  (let [resp (DefaultHttpResponse. HttpVersion/HTTP_1_1
                (HttpResponseStatus/valueOf status))]
     (set-headers resp headers)
-    (cond (string? body) (write-string ch resp body keep-alive)
-          (seq? body) (write-string ch resp (apply str body) keep-alive)
-          (instance? InputStream body)
-          (do
-            (.write ch resp)
-            (-> (.write ch (ChunkedStream. ^InputStream body))
-                (.addListener (reify ChannelFutureListener
-                                (operationComplete [this fut]
-                                  (-> fut .getChannel .close)
-                                  (.close ^InputStream body))))))
-          (instance? File body) (write-file ch resp body keep-alive)
-          (nil? body)  nil
-          :else (throw (Exception. (format "Unrecognized body: %s") body)))))
+    (Util/writeResp ctx resp body keep-alive)))
 
