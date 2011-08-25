@@ -72,6 +72,29 @@ There is a script `./scripts/start_server` will start netty at port
 
 This repo was fork from [datskos](https://github.com/datskos/ring-netty-adapter)
 
-## Next steps:
+## Long poling(alpha):
 
-* Find a way to do things asynchronously.
+By using http chunked encoding:
+sample code:
+
+```clj
+(deftest test-body-chunked
+  (let [async (fn [^Runnable f] (.start (Thread. f)))
+        server (run-netty (fn [req]
+                            (let [chunked (HttpChunked. "Hello ")]
+                              (async (fn [] (Thread/sleep 100)
+                                       (.send chunked "World")
+                                       (async (fn [] (Thread/sleep 100)
+                                                (.close chunked)))))
+                              {:status  200
+                               :headers {"Content-Type" "text/plain"}
+                               :body chunked}))
+                          {:port 4347})]
+    (try
+      (let [resp (http/get "http://localhost:4347")]
+        (is (= (:status resp) 200))
+        (is (= (get-in resp [:headers "content-type"]) "text/plain"))
+        (is (= (get-in resp [:headers "transfer-encoding"]) "chunked"))
+        (is (= (:body resp) "Hello World")))
+      (finally (server)))))
+```

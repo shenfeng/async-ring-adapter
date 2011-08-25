@@ -4,7 +4,8 @@
         ring.middleware.file-info
         ring.adapter.netty)
   (:require [clj-http.client :as http])
-  (:import [java.io File FileOutputStream FileInputStream]))
+  (:import [java.io File FileOutputStream FileInputStream]
+           ring.adapter.netty.HttpChunked))
 
 (defn ^File gen-tempfile
   "generate a tempfile, the file will be deleted before jvm shutdown"
@@ -99,4 +100,24 @@
       (let [resp (http/get "http://localhost:4347")]
         (is (= (:status resp) 204))
         (is (= (get-in resp [:headers "content-type"]) "text/plain")))
+      (finally (server)))))
+
+(deftest test-body-chunked
+  (let [async (fn [^Runnable f] (.start (Thread. f)))
+        server (run-netty (fn [req]
+                            (let [chunked (HttpChunked. "Hello ")]
+                              (async (fn [] (Thread/sleep 100)
+                                       (.send chunked "World")
+                                       (async (fn [] (Thread/sleep 100)
+                                                (.close chunked)))))
+                              {:status  200
+                               :headers {"Content-Type" "text/plain"}
+                               :body chunked}))
+                          {:port 4347})]
+    (try
+      (let [resp (http/get "http://localhost:4347")]
+        (is (= (:status resp) 200))
+        (is (= (get-in resp [:headers "content-type"]) "text/plain"))
+        (is (= (get-in resp [:headers "transfer-encoding"]) "chunked"))
+        (is (= (:body resp) "Hello World")))
       (finally (server)))))
