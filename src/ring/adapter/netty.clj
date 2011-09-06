@@ -1,16 +1,18 @@
 (ns ring.adapter.netty
   (:use ring.adapter.plumbing)
-  (:import [java.net InetSocketAddress]
-           [java.util.concurrent Executors]
+  (:import java.net.InetSocketAddress
+           java.util.concurrent.Executors
            org.jboss.netty.channel.group.DefaultChannelGroup
+           ring.adapter.netty.PrefixTF
            org.jboss.netty.bootstrap.ServerBootstrap
+           [org.jboss.netty.util ThreadRenamingRunnable ThreadNameDeterminer]
            org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory
            org.jboss.netty.handler.stream.ChunkedWriteHandler
-           [org.jboss.netty.channel ChannelPipeline Channels
-            ExceptionEvent ChannelEvent MessageEvent
+           [org.jboss.netty.channel ChannelPipeline Channels MessageEvent
+            ExceptionEvent ChannelEvent
             ChannelPipelineFactory SimpleChannelUpstreamHandler]
-           [org.jboss.netty.handler.codec.http HttpContentCompressor
-            HttpRequestDecoder HttpResponseEncoder HttpChunkAggregator]))
+           [org.jboss.netty.handler.codec.http HttpRequestDecoder
+            HttpResponseEncoder]))
 
 (def default-server-options
   {"child.reuseAddress" true,
@@ -46,9 +48,13 @@
         (.addLast "handler" (make-handler channel-group handler))))))
 
 (defn run-netty [handler options]
-  (let [server (ServerBootstrap. (NioServerSocketChannelFactory.
-                                  (Executors/newCachedThreadPool)
-                                  (Executors/newCachedThreadPool)))
+  (ThreadRenamingRunnable/setThreadNameDeterminer
+   ThreadNameDeterminer/CURRENT)
+  (let [cf (NioServerSocketChannelFactory.
+            (Executors/newCachedThreadPool (PrefixTF. "Server Boss"))
+            (Executors/newCachedThreadPool (PrefixTF. "Server Worker"))
+            (or (:worker options) 1))
+        server (ServerBootstrap. cf)
         channel-group (DefaultChannelGroup.)]
     (doseq [[k v] (merge default-server-options (:netty options))]
       (.setOption server k v))
