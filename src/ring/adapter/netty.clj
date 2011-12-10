@@ -18,7 +18,7 @@
   {"child.reuseAddress" true,
    "reuseAddress" true,
    "child.keepAlive" true,
-   "child.connectTimeoutMillis" 100,
+   "child.connectTimeoutMillis" 4000,
    "tcpNoDelay" true,
    "child.tcpNoDelay" true})
 

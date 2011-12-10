@@ -3,9 +3,6 @@ package ring.adapter.netty;
 import static org.jboss.netty.buffer.ChannelBuffers.copiedBuffer;
 import static org.jboss.netty.channel.ChannelFutureListener.CLOSE;
 import static org.jboss.netty.handler.codec.http.HttpHeaders.setContentLength;
-import static org.jboss.netty.handler.codec.http.HttpHeaders.setHeader;
-import static org.jboss.netty.handler.codec.http.HttpHeaders.Names.TRANSFER_ENCODING;
-import static org.jboss.netty.handler.codec.http.HttpHeaders.Values.CHUNKED;
 import static org.jboss.netty.util.CharsetUtil.UTF_8;
 
 import java.io.File;
@@ -61,10 +58,6 @@ public class Util {
                 ch.write(resp).addListener(CLOSE);
             }
 
-        } else if (body instanceof HttpChunked) {
-            setHeader(resp, TRANSFER_ENCODING, CHUNKED);
-            ch.write(resp);
-            ((HttpChunked)body).setChannel(ch, keepAlive);
         } else if (body instanceof File) {
             ch.write(resp);
             final ChunkedFile f = new ChunkedFile((File) body);
