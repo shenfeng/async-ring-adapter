@@ -19,6 +19,7 @@ import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
+import org.jboss.netty.handler.codec.http.HttpResponse;
 import org.jboss.netty.handler.stream.ChunkedFile;
 import org.jboss.netty.handler.stream.ChunkedStream;
 
@@ -26,6 +27,22 @@ import clojure.lang.ISeq;
 import clojure.lang.Seqable;
 
 public class Util {
+
+    public static void handleResponseFuture(ChannelHandlerContext ctx,
+            final HttpResponseFuture future, final boolean keepalive) {
+        final Channel ch = ctx.getChannel();
+        future.addListener(new Runnable() {
+            public void run() {
+                try {
+                    HttpResponse resp = future.get();
+                    // keep-alive is disabled
+                    ch.write(resp).addListener(CLOSE);
+                } catch (Exception e) {
+                    ch.close();
+                }
+            }
+        });
+    }
 
     public static void writeResp(ChannelHandlerContext ctx,
             DefaultHttpResponse resp, Object body, boolean keepAlive)

@@ -3,6 +3,7 @@
            ring.adapter.netty.Util
            org.jboss.netty.handler.codec.http.HttpRequest
            java.net.InetSocketAddress
+           ring.adapter.netty.HttpResponseFuture
            [org.jboss.netty.buffer ChannelBufferInputStream]
            [org.jboss.netty.handler.codec.http HttpHeaders HttpVersion
             HttpResponseStatus DefaultHttpResponse]))
@@ -59,9 +60,12 @@
         (.addHeader resp key val)))))
 
 (defn write-response
-  [^ChannelHandlerContext ctx keep-alive {:keys [status headers body]}]
-  (let [resp (DefaultHttpResponse. HttpVersion/HTTP_1_1
-               (HttpResponseStatus/valueOf status))]
-    (set-headers resp headers)
-    (Util/writeResp ctx resp body keep-alive)))
+  [^ChannelHandlerContext ctx keep-alive
+   {:keys [status body] :as ring-resp}]
+  (if (instance? HttpResponseFuture body)
+    (Util/handleResponseFuture ctx body keep-alive)
+    (let [resp (DefaultHttpResponse. HttpVersion/HTTP_1_1
+                 (HttpResponseStatus/valueOf status))]
+      (set-headers resp (:headers ring-resp))
+      (Util/writeResp ctx resp body keep-alive))))
 
