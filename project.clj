@@ -1,5 +1,5 @@
 (defproject me.shenfeng/async-ring-adapter
-  "0.0.1-SNAPSHOT"
+  "1.0.0"
   :description "Ring Netty adapter"
   :dependencies [[clojure "1.3.0"]
                  [org.jboss.netty/netty "3.2.7.Final"]]
