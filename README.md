@@ -53,12 +53,54 @@ see
 * Serving file is not optimized due to it's better be done by Nginx,
   so as compression.
 
+## Async
+
+ By using
+ [ListenableFuture](https://github.com/shenfeng/async-ring-adapter/tree/master/src/java/ring/adapter/netty/ListenableFuture.java).
+
+ More info [here](https://github.com/shenfeng/async-ring-adapter/blob/master/src/ring/adapter/plumbing.clj#L66)
+
+ This is used by [rssminer](http://rssminer.net) to do
+
+ 1. Favicon service on demand fetch and delivery
+ 2. Feed's original page on demand fetch and delivery
+ 3. Proxy, workaround some good blogging site are blocked
+
+```clj
+(def asyc-body
+  (reify ListenableFuture
+    (addListener [this listener]
+      (.start (Thread. (fn []
+                         (println "sleep 100ms")
+                         (Thread/sleep 100)
+                         (.run listener)))))
+    (get [this]
+      {:status 204
+       :headers {"Content-type" "application/json"}})))
+
+(deftest test-body-listenablefuture
+  (let [server (run-netty (fn [req]
+                            {:status  200
+                             :body asyc-body})
+                          {:port 4347})]
+    (try
+      (let [resp (http/get "http://localhost:4347")]
+        (is (= (:status resp) 204))
+        (is (= (get-in resp [:headers "content-type"]) "application/json")))
+      (finally (server)))))
+```
+
 ## Benchmark
 
 There is a script `./scripts/start_server` will start netty at port
 3333, jetty at port 4444, here is a result on my machine
+
 #### how to run
-* lein deps && lein javac && ./scripts/start_server
+```sh
+# start jetty, use ab to benchmark it; do it with netty the same
+lein deps && lein javac && ./scripts/bench
+
+```
 
 ```sh
   ab -n 300000 -c 50 http://localhost:4444/  #11264.90 [#/sec] (mean)

@@ -1,0 +1,40 @@
+#!/bin/sh
+
+ABSOLUTE_PATH=$(readlink -f $0)
+HOME="${ABSOLUTE_PATH%/*/*}"
+
+start_server () {
+    java -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 \
+        -XX:+UseCompressedOops \
+        -server \
+        -cp "lib/*:lib/dev/*:src:test:classes" \
+        clojure.main \
+        -m ring.adapter.benchmark \
+        /dev/null $@ &
+}
+
+# echo "thisi s a test"
+bench_netty () {
+    start_server --server $1
+    PID=$!
+    echo "bench $1, pid is ${PID}"
+    echo "sleep 4 second to wait $1 start"
+    sleep 5
+    echo "warm up $1"
+    ab -n 50000 -c 50 http://localhost:9091/ > /dev/null 2>&1
+    sleep 1
+    ab -n 50000 -c 50 http://localhost:9091/
+    kill -9 $PID
+    echo "\n-------------------------------------------------\n"
+}
+
+cd $HOME
+
+case "$1" in
+    bench)
+        bench_netty netty
+        bench_netty jetty
+        ;;
+    *)
+        start_server $@
+esac

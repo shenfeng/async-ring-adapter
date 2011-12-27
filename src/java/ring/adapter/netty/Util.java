@@ -28,22 +28,6 @@ import clojure.lang.Seqable;
 
 public class Util {
 
-    public static void handleResponseFuture(ChannelHandlerContext ctx,
-            final HttpResponseFuture future, final boolean keepalive) {
-        final Channel ch = ctx.getChannel();
-        future.addListener(new Runnable() {
-            public void run() {
-                try {
-                    HttpResponse resp = future.get();
-                    // keep-alive is disabled
-                    ch.write(resp).addListener(CLOSE);
-                } catch (Exception e) {
-                    ch.close();
-                }
-            }
-        });
-    }
-
     public static void writeResp(ChannelHandlerContext ctx,
             DefaultHttpResponse resp, Object body, boolean keepAlive)
             throws IOException {
@@ -101,6 +85,12 @@ public class Util {
                 ch.write(resp);
             } else {
                 ch.write(resp).addListener(CLOSE);
+            }
+        } else if (body instanceof HttpResponse) {
+            if (keepAlive) {
+                ch.write(body);
+            } else {
+                ch.write(body).addListener(CLOSE);
             }
         } else {
             throw new RuntimeException("Unrecognized body: " + body);

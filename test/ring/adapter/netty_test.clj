@@ -4,7 +4,8 @@
         ring.middleware.file-info
         ring.adapter.netty)
   (:require [clj-http.client :as http])
-  (:import [java.io File FileOutputStream FileInputStream]))
+  (:import [java.io File FileOutputStream FileInputStream]
+           ring.adapter.netty.ListenableFuture))
 
 (defn ^File gen-tempfile
   "generate a tempfile, the file will be deleted before jvm shutdown"
@@ -100,3 +101,26 @@
         (is (= (:status resp) 204))
         (is (= (get-in resp [:headers "content-type"]) "text/plain")))
       (finally (server)))))
+
+(def asyc-body
+  (reify ListenableFuture
+    (addListener [this listener]
+      (.start (Thread. (fn []
+                         (println "sleep 100ms")
+                         (Thread/sleep 100)
+                         (.run listener)))))
+    (get [this]
+      {:status 204
+       :headers {"Content-type" "application/json"}})))
+
+(deftest test-body-listenablefuture
+  (let [server (run-netty (fn [req]
+                            {:status  200
+                             :body asyc-body})
+                          {:port 4347})]
+    (try
+      (let [resp (http/get "http://localhost:4347")]
+        (is (= (:status resp) 204))
+        (is (= (get-in resp [:headers "content-type"]) "application/json")))
+      (finally (server)))))
+

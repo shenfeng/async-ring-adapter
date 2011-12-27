@@ -34,7 +34,7 @@
           (write-response ctx
                           (request-map :keep-alive) ring-response))))
     (exceptionCaught [ctx ^ExceptionEvent e]
-      (-> e .getCause .printStackTrace)
+      ;; close it
       (-> e .getChannel .close))))
 
 (defn- pipeline-factory

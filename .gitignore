@@ -6,3 +6,4 @@ bin
 pom.xml
 .settings/
 *.jar
+/.lein-failures
