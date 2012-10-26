@@ -3,9 +3,11 @@
 An netty adapter impl on top of [netty](http://netty.io/)
 for used with [Ring](https://github.com/mmcgrana/ring)
 
+I write another one using pure java [http-kit](https://github.com/shenfeng/http-kit)
+
 ## Quick Start
 
-  `[me.shenfeng/ring-netty-adapter "0.0.1-SNAPSHOT"]`
+  `[me.shenfeng/ring-netty-adapter "1.0.2"]`
 
 ```clj
 (use 'ring.adapter.netty)
