@@ -124,3 +124,13 @@
         (is (= (get-in resp [:headers "content-type"]) "application/json")))
       (finally (server)))))
 
+(defasync test-async-just-body [req]
+  ((:cb req) {:status 200 :body "hello async"}))
+
+(deftest test-defasync
+  (let [server (run-netty test-async-just-body {:port 4347})]
+    (try
+      (let [resp (http/get "http://localhost:4347")]
+        (is (= (:status resp) 200))
+        (is (= (:body resp) "hello async")))
+      (finally (server)))))

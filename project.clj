@@ -3,7 +3,7 @@
   :description "Ring Netty adapter"
   :dependencies [[clojure "1.3.0"]
                  [org.jboss.netty/netty "3.2.7.Final"]]
-  :dev-dependencies [[swank-clojure "1.4.0-SNAPSHOT"]
+  :dev-dependencies [[swank-clojure "1.4.0"]
                      [clj-http "0.1.3"]
                      [org.clojure/tools.cli "0.2.1"]
                      [ring/ring-jetty-adapter "0.3.11"]
