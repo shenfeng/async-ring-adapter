@@ -7,7 +7,7 @@ I write another one using pure java [http-kit](https://github.com/shenfeng/http-
 
 ## Quick Start
 
-  `[me.shenfeng/ring-netty-adapter "1.0.2"]`
+  `[me.shenfeng/async-ring-adapter "1.0.2"]`
 
 ```clj
 (use 'ring.adapter.netty)
