@@ -49,8 +49,7 @@ public class Util {
                 comps.add(copiedBuffer(seq.first().toString(), UTF_8).slice());
                 seq = seq.next();
             }
-            ChannelBuffer buffer = new CompositeChannelBuffer(
-                    ByteOrder.BIG_ENDIAN, comps);
+            ChannelBuffer buffer = new CompositeChannelBuffer(ByteOrder.BIG_ENDIAN, comps, false);
             resp.setContent(buffer);
             if (keepAlive) {
                 setContentLength(resp, buffer.readableBytes());

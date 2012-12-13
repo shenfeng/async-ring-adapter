@@ -1,7 +1,7 @@
 (defproject me.shenfeng/async-ring-adapter "1.0.2"
   :description "Ring Netty adapter"
   :dependencies [[org.clojure/clojure "1.3.0"]
-                 [org.jboss.netty/netty "3.2.7.Final"]]
+                 [io.netty/netty "3.5.11.Final"]]
 
   :profiles {:1.4  {:dependencies [[org.clojure/clojure "1.4.0"]]}
              :1.5  {:dependencies [[org.clojure/clojure "1.5.0-master-SNAPSHOT"]]}
