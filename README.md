@@ -7,7 +7,7 @@ I write another one using pure java [http-kit](https://github.com/shenfeng/http-
 
 ## Quick Start
 
-  `[me.shenfeng/async-ring-adapter "1.0.2"]`
+  `me.shenfeng/async-ring-adapter "1.1-SNAPSHOT"`
 
 ```clj
 (use 'ring.adapter.netty)
@@ -16,7 +16,7 @@ I write another one using pure java [http-kit](https://github.com/shenfeng/http-
  [req]
   {:status  200
    :headers {"Content-Type" "text/html"}
-   :body    (str "hello word")})
+   :body    "hello word"})
 
 (run-netty app {:port 8080
                 :netty {"reuseAddress" true}})
@@ -55,42 +55,39 @@ see
 * Serving file is not optimized due to it's better be done by Nginx,
   so as compression.
 
-## Async
+### Async extension
 
- By using
- [ListenableFuture](https://github.com/shenfeng/async-ring-adapter/tree/master/src/java/ring/adapter/netty/ListenableFuture.java).
 
- More info [here](https://github.com/shenfeng/async-ring-adapter/blob/master/src/ring/adapter/plumbing.clj#L66)
-
- This is used by [rssminer](http://rssminer.net) to do
-
- 1. Favicon service on demand fetch and delivery
- 2. Feed's original page on demand fetch and delivery
- 3. Proxy, workaround some good blogging site are blocked
+You write a ring handler this way
 
 ```clj
-(def asyc-body
-  (reify ListenableFuture
-    (addListener [this listener]
-      (.start (Thread. (fn []
-                         (println "sleep 100ms")
-                         (Thread/sleep 100)
-                         (.run listener)))))
-    (get [this]
-      {:status 204
-       :headers {"Content-type" "application/json"}})))
+(defn handler [req]
+  {:status 200 :headers {} :body "hello world"})  # accept a Clojure map, return a map
 
-(deftest test-body-listenablefuture
-  (let [server (run-netty (fn [req]
-                            {:status  200
-                             :body asyc-body})
-                          {:port 4347})]
-    (try
-      (let [resp (http/get "http://localhost:4347")]
-        (is (= (:status resp) 204))
-        (is (= (get-in resp [:headers "content-type"]) "application/json")))
-      (finally (server)))))
 ```
+
+defasync just like defn. The difference is: compute the respone map (possiblity asynchronous, in an other thread), give it to `cb`, cb can be passed around.
+
+**interface design suggestion welcome**
+
+Currently, [http-kit](https://github.com/shenfeng/http-kit) use the same defasync mechanism, So you should have No trouble switch between them two.
+
+
+#### example
+```clj
+(:use ring.adapter.netty)
+
+(defasync async [req] cb
+  (.start (Thread. (fn []
+                     (Thread/sleep 1000)
+                     ;; return a ring spec response => {:status :headers :body}
+                     ;; or just :body
+                     ;; call (cb req) when response ready
+                     (cb {:status 200 :body "hello async"})))))
+
+(run-netty async {:port 8080})
+```
+
 
 ## Benchmark
 

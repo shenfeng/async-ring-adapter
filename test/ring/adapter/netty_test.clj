@@ -5,7 +5,7 @@
         ring.adapter.netty)
   (:require [clj-http.client :as http])
   (:import [java.io File FileOutputStream FileInputStream]
-           ring.adapter.netty.ListenableFuture))
+           ring.adapter.netty.IListenableFuture))
 
 (defn ^File gen-tempfile
   "generate a tempfile, the file will be deleted before jvm shutdown"
@@ -103,7 +103,7 @@
       (finally (server)))))
 
 (def asyc-body
-  (reify ListenableFuture
+  (reify IListenableFuture
     (addListener [this listener]
       (.start (Thread. (fn []
                          (println "sleep 100ms")
@@ -124,8 +124,8 @@
         (is (= (get-in resp [:headers "content-type"]) "application/json")))
       (finally (server)))))
 
-(defasync test-async-just-body [req]
-  ((:cb req) {:status 200 :body "hello async"}))
+(defasync test-async-just-body [req] cb
+  (cb {:status 200 :body "hello async"}))
 
 (deftest test-defasync
   (let [server (run-netty test-async-just-body {:port 4347})]

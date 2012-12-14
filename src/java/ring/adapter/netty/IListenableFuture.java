@@ -1,6 +1,6 @@
 package ring.adapter.netty;
 
-public interface ListenableFuture {
+public interface IListenableFuture {
     void addListener(Runnable listener);
 
     public Object get();
