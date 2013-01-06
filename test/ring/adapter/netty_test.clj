@@ -134,3 +134,15 @@
         (is (= (:status resp) 200))
         (is (= (:body resp) "hello async")))
       (finally (server)))))
+
+(defn async-handler [req]
+  (async-response respond!
+                  (future (respond! {:status 200 :body "hello async"}))))
+
+(deftest test-defasync
+  (let [server (run-netty async-handler {:port 4347})]
+    (try
+      (let [resp (http/get "http://localhost:4347")]
+        (is (= (:status resp) 200))
+        (is (= (:body resp) "hello async")))
+      (finally (server)))))

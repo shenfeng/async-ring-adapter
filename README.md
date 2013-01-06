@@ -85,6 +85,11 @@ Currently, [http-kit](https://github.com/shenfeng/http-kit) use the same defasyn
                      ;; call (cb req) when response ready
                      (cb {:status 200 :body "hello async"})))))
 
+;; or this way, just wrap with async-response
+(defn async [req]
+  (async-response respond!
+                  (future (respond! {:status 200 :body "hello async"}))))
+
 (run-netty async {:port 8080})
 ```
 

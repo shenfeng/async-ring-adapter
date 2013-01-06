@@ -1,5 +1,6 @@
 (ns ring.adapter.netty
   (:use ring.adapter.plumbing)
+  (:require [clojure.tools.macro :as macro])
   (:import ring.adapter.netty.IListenableFuture
            java.net.InetSocketAddress
            java.util.concurrent.Executors
@@ -48,27 +49,44 @@
         (.addLast "chunkedWriter" (ChunkedWriteHandler.))
         (.addLast "handler" (make-handler channel-group handler))))))
 
-(defmacro defasync [name [req] cb & body]
-  `(defn ~name [~req]
-     {:status 200
+(defmacro async-response
+  "Wraps body so that a standard Ring response will be returned to caller when
+  `(callback-name ring-response)` is executed in any thread:
+
+     (defn my-async-handler! [request]
+       (async-response respond!
+         (future (respond! {:status  200
+                            :headers {\"Content-Type\" \"text/html\"}
+                            :body    \"This is an async response!\"}))))
+
+  The caller's request will block while waiting for a response (see
+  Ajax long polling example as one common use case)."
+  [callback-name & body]
+  `(let [data# (atom {})
+         ~callback-name (fn [response#]
+                          (swap! data# assoc :response response#)
+                          (when-let [listener# (:listener @data#)]
+                            (.run ^Runnable listener#)))]
+     (do ~@body)
+     {:status  200
       :headers {}
-      :body (let [data# (atom {})
-                  ~cb (fn [resp#]
-                        (reset! data# (assoc @data# :r resp#))
-                        (when-let [l# ^Runnable (:l @data#)]
-                          (.run l#)))]
-              (do ~@body)
-              (reify IListenableFuture
-                (addListener [this# listener#]
-                  (if-let [d# (:r @data#)]
-                    (.run ^Runnable listener#)
-                    (reset! data# (assoc @data# :l listener#))))
-                (get [this#]
-                  (:r @data#))))}))
+      :body    (reify IListenableFuture
+                 (addListener [this# listener#]
+                   (if (:response @data#)
+                     (.run ^Runnable listener#)
+                     (swap! data# assoc :listener listener#)))
+                 (get [this#] (:response @data#)))}))
+
+(defmacro defasync
+  "(defn name [request] (async-response callback-name body))"
+  {:arglists '(name [request] callback-name & body)}
+  [name & sigs]
+  (let [[name [[request] callback-name & body]]
+        (macro/name-with-attributes name sigs)]
+    `(defn ~name [~request] (async-response ~callback-name ~@body))))
 
 (defn run-netty [handler options]
-  (ThreadRenamingRunnable/setThreadNameDeterminer
-   ThreadNameDeterminer/CURRENT)
+  (ThreadRenamingRunnable/setThreadNameDeterminer ThreadNameDeterminer/CURRENT)
   (let [cf (NioServerSocketChannelFactory.
             (Executors/newCachedThreadPool (PrefixTF. "Server Boss"))
             (Executors/newCachedThreadPool (PrefixTF. "Server Worker"))
@@ -79,8 +97,7 @@
       (.setOption server k v))
     (.setPipelineFactory server (pipeline-factory channel-group
                                                   handler options))
-    (.add channel-group (.bind server
-                               (InetSocketAddress. (:port options))))
-    (fn []
+    (.add channel-group (.bind server (InetSocketAddress. (:port options))))
+    (fn stop-server []
       (-> channel-group .close .awaitUninterruptibly)
       (.releaseExternalResources server))))
