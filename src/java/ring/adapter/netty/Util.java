@@ -28,13 +28,11 @@ import clojure.lang.Seqable;
 
 public class Util {
 
-    public static void writeResp(ChannelHandlerContext ctx,
-            DefaultHttpResponse resp, Object body, boolean keepAlive)
-            throws IOException {
+    public static void writeResp(ChannelHandlerContext ctx, DefaultHttpResponse resp,
+            Object body, boolean keepAlive) throws IOException {
         final Channel ch = ctx.getChannel();
         if (body instanceof String) {
-            final ChannelBuffer buffer = copiedBuffer((String) body, UTF_8)
-                    .slice();
+            final ChannelBuffer buffer = copiedBuffer((String) body, UTF_8).slice();
             resp.setContent(buffer);
             if (keepAlive) {
                 setContentLength(resp, buffer.readableBytes());
@@ -49,7 +47,8 @@ public class Util {
                 comps.add(copiedBuffer(seq.first().toString(), UTF_8).slice());
                 seq = seq.next();
             }
-            ChannelBuffer buffer = new CompositeChannelBuffer(ByteOrder.BIG_ENDIAN, comps, false);
+            ChannelBuffer buffer = new CompositeChannelBuffer(ByteOrder.BIG_ENDIAN, comps,
+                    false);
             resp.setContent(buffer);
             if (keepAlive) {
                 setContentLength(resp, buffer.readableBytes());
@@ -69,14 +68,12 @@ public class Util {
         } else if (body instanceof InputStream) {
             ch.write(resp);
             final InputStream is = (InputStream) body;
-            ch.write(new ChunkedStream(is)).addListener(
-                    new ChannelFutureListener() {
-                        public void operationComplete(ChannelFuture future)
-                                throws Exception {
-                            future.getChannel().close();
-                            is.close();
-                        }
-                    });
+            ch.write(new ChunkedStream(is)).addListener(new ChannelFutureListener() {
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    future.getChannel().close();
+                    is.close();
+                }
+            });
 
         } else if (body == null) {
             setContentLength(resp, 0);
