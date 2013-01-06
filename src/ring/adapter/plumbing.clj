@@ -52,7 +52,10 @@
      :body               (ChannelBufferInputStream. (.getContent req))
      :keep-alive         (HttpHeaders/isKeepAlive req)}))
 
-(defn- set-headers [^DefaultHttpResponse resp headers]
+(defn- set-headers [^DefaultHttpResponse resp headers keep-alive]
+  (.setHeader resp "Server" "Netty-ring")
+  (.setHeader resp "Date" (Util/getDate))
+  (when keep-alive (.setHeader resp "Connection" "Keep-Alive"))
   (doseq [[^String key val-or-vals]  headers]
     (if (string? val-or-vals)
       (.setHeader resp key ^String val-or-vals)
@@ -60,14 +63,11 @@
         (.addHeader resp key val)))))
 
 (defn write-response
-  [^ChannelHandlerContext ctx keep-alive
-   {:keys [status body] :as ring-resp}]
+  [^ChannelHandlerContext ctx keep-alive {:keys [status body] :as ring-resp}]
   (if (instance? IListenableFuture body)
     (.addListener ^IListenableFuture body
-                  (fn [] (write-response ctx keep-alive
-                                        (.get ^IListenableFuture body))))
+                  (fn [] (write-response ctx keep-alive (.get ^IListenableFuture body))))
     (let [resp (DefaultHttpResponse. HttpVersion/HTTP_1_1
                  (HttpResponseStatus/valueOf status))]
-      (set-headers resp (:headers ring-resp))
+      (set-headers resp (:headers ring-resp) keep-alive)
       (Util/writeResp ctx resp body keep-alive))))
-

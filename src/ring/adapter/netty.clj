@@ -31,10 +31,8 @@
       (.add channel-group (.getChannel e)))
     (messageReceived [ctx ^MessageEvent e]
       (let [request-map (build-request-map ctx (.getMessage e))
-            ring-response (handler request-map)]
-        (when ring-response
-          (write-response ctx
-                          (request-map :keep-alive) ring-response))))
+            ring-response (or (handler request-map) {:status 404 :headers {}})]
+        (write-response ctx (request-map :keep-alive) ring-response)))
     (exceptionCaught [ctx ^ExceptionEvent e]
       ;; close it
       (-> e .getChannel .close))))
@@ -95,8 +93,7 @@
         channel-group (DefaultChannelGroup.)]
     (doseq [[k v] (merge default-server-options (:netty options))]
       (.setOption server k v))
-    (.setPipelineFactory server (pipeline-factory channel-group
-                                                  handler options))
+    (.setPipelineFactory server (pipeline-factory channel-group handler options))
     (.add channel-group (.bind server (InetSocketAddress. (:port options))))
     (fn stop-server []
       (-> channel-group .close .awaitUninterruptibly)

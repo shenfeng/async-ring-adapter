@@ -9,8 +9,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteOrder;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.CompositeChannelBuffer;
@@ -26,7 +30,24 @@ import org.jboss.netty.handler.stream.ChunkedStream;
 import clojure.lang.ISeq;
 import clojure.lang.Seqable;
 
+//SimpleDateFormat is not threadsafe
+class DateFormater extends ThreadLocal<SimpleDateFormat> {
+    protected SimpleDateFormat initialValue() {
+        // Formats into HTTP date format (RFC 822/1123).
+        SimpleDateFormat f = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
+        f.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return f;
+    }
+
+}
+
 public class Util {
+
+    private static final DateFormater FORMATER = new DateFormater();
+
+    public static String getDate() {
+        return FORMATER.get().format(new Date());
+    }
 
     public static void writeResp(ChannelHandlerContext ctx, DefaultHttpResponse resp,
             Object body, boolean keepAlive) throws IOException {
