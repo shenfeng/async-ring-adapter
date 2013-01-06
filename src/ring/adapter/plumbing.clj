@@ -66,7 +66,10 @@
   [^ChannelHandlerContext ctx keep-alive {:keys [status body] :as ring-resp}]
   (if (instance? IListenableFuture body)
     (.addListener ^IListenableFuture body
-                  (fn [] (write-response ctx keep-alive (.get ^IListenableFuture body))))
+                  (fn [] (write-response ctx keep-alive
+                                        (let [r (.get ^IListenableFuture body)]
+                                          (if (map? r) r
+                                              {:status 200 :headers {} :body r})))))
     (let [resp (DefaultHttpResponse. HttpVersion/HTTP_1_1
                  (HttpResponseStatus/valueOf status))]
       (set-headers resp (:headers ring-resp) keep-alive)

@@ -6,10 +6,11 @@
   :plugins [[lein-swank "1.4.4"]]
   :profiles {:1.4  {:dependencies [[org.clojure/clojure "1.4.0"]]}
              :1.5  {:dependencies [[org.clojure/clojure "1.5.0-master-SNAPSHOT"]]}
-             :dev  {:dependencies [[clj-http "0.1.3"]
+             :dev  {:dependencies [[clj-http "0.6.0"]
                                    [org.clojure/tools.cli "0.2.1"]
-                                   [ring/ring-jetty-adapter "0.3.11"]
-                                   [ring/ring-core "1.0.0"]]}
+                                   [compojure "1.0.2"]
+                                   [ring/ring-jetty-adapter "1.1.6"]
+                                   [ring/ring-core "1.1.6"]]}
              :test {:dependencies []}}
   :warn-on-reflection true
   :javac-options ["-source" "1.6" "-target" "1.6"]

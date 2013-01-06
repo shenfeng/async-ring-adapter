@@ -14,7 +14,7 @@
             ExceptionEvent ChannelEvent
             ChannelPipelineFactory SimpleChannelUpstreamHandler]
            [org.jboss.netty.handler.codec.http HttpRequestDecoder
-            HttpResponseEncoder]))
+            HttpResponseEncoder HttpChunkAggregator]))
 
 (def default-server-options
   {"child.reuseAddress" true,
@@ -42,7 +42,9 @@
   (reify ChannelPipelineFactory
     (getPipeline [this]
       (doto (Channels/pipeline)
-        (.addLast "decoder" (HttpRequestDecoder.))
+        ;; maxInitialLine: 4k, maxHeaderSize: 4k, maxChunkSize: 8M
+        (.addLast "decoder" (HttpRequestDecoder. 4096 4096 8388608))
+        (.addLast "chunkagg" (HttpChunkAggregator. 8388608))
         (.addLast "encoder" (HttpResponseEncoder.))
         (.addLast "chunkedWriter" (ChunkedWriteHandler.))
         (.addLast "handler" (make-handler channel-group handler))))))
