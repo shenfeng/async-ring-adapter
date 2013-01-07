@@ -90,7 +90,7 @@
   (let [cf (NioServerSocketChannelFactory.
             (Executors/newCachedThreadPool (PrefixTF. "Server Boss"))
             (Executors/newCachedThreadPool (PrefixTF. "Server Worker"))
-            (or (:worker options) 1))
+            (or (:worker options) 4))
         server (ServerBootstrap. cf)
         channel-group (DefaultChannelGroup.)]
     (doseq [[k v] (merge default-server-options (:netty options))]
